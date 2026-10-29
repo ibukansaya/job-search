@@ -1,0 +1,29 @@
+{
+  "positions": [
+    "Software Engineer",
+    "Fullstack Developer",
+    "AI Engineer",
+    "ML Engineer",
+    "Cloud Engineer",
+    "DevOps Engineer",
+    "QA Engineer"
+  ],
+  "workTypes": [
+    "remote_id",
+    "remote_worldwide",
+    "hybrid",
+    "onsite"
+  ],
+  "portals": {
+    "jobstreet": true,
+    "linkedin": true,
+    "glints": true,
+    "kalibrr": true,
+    "dealls": true,
+    "techinasia": true,
+    "indeed": true,
+    "glassdoor": true
+  },
+  "maxAgeDays": 7,
+  "rateLimitDelayMs": 800
+}

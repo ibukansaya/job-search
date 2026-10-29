@@ -1,0 +1,13 @@
+services:
+  scraper:
+    build: .
+    container_name: id-job-scraper
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./config.json:/app/config.json:ro
+    environment:
+      - TZ=${TZ:-Asia/Jakarta}
+    command: bun run src/index.ts --daemon
