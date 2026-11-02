@@ -83,7 +83,7 @@ Automated multi-portal tech job scraper built in TypeScript on **Bun** targeting
 ### 2. Installation
 ```bash
 # Clone the repository
-git clone https://github.com/ersaasyhar/job-search.git
+git clone https://github.com/ibukansaya/job-search.git
 cd job-search
 
 # Install dependencies
