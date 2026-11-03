@@ -8,7 +8,7 @@ This guide covers production deployment options, daemon operation, Docker contai
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `DISCORD_WEBHOOK_URL` | Optional | `""` | Discord channel webhook URL. If unset or invalid, jobs are safely printed to stdout (dry run). |
+| `DISCORD_WEBHOOK_URL` | Optional | `""` | Discord channel webhook URL. Thread IDs in `config.json` must belong to this webhook's channel. If unset or invalid, nothing is sent and jobs stay pending. |
 | `DISCORD_DELAY_MS` | Optional | `2500` | Delay between consecutive Discord embed batch dispatches in milliseconds. |
 | `TZ` | Optional | `Asia/Jakarta` | Timezone for the container and daemon scheduling (e.g. `Asia/Jakarta`, `UTC`). |
 | `SCHEDULE_DAILY_AT` | Optional | `08:00` | Fixed daily time (HH:MM) to trigger scrape cycles in daemon mode. |

@@ -123,9 +123,15 @@ The dispatcher in `src/services/discord.ts` manages formatting and rate-limited 
 - **Extended Fields:** Extracted Tech Stack tags, AI role summary, or job description snippet.
 
 ### Batching & Rate-Limit Handling
-- Groups jobs into batches of **5 embeds per message** (Discord maximum is 10).
-- Applies a mandatory 1000ms delay between consecutive webhook POST requests.
+- Groups jobs by destination thread ID (`thread_id` query parameter) so a message batch never mixes threads.
+- Sends batches of **5 embeds per message** (Discord maximum is 10).
+- Applies `DISCORD_DELAY_MS` (default 2500ms) between consecutive webhook POST requests.
 - Automatic HTTP 429 backoff: reads `retry_after` from Discord's response and sleeps for the requested duration before retrying.
+
+### Destination Routing
+- `findBestMatchingPosition` resolves each stored title against `config.positions` at dispatch time, using the configured names/aliases, `priority`, and `excludeKeywords`.
+- Jobs that match no configured position stay pending (never posted to the parent channel).
+- Pending rows are paged in 50-row pages so unmatched records cannot starve later matching jobs when a dispatch limit is set.
 
 ---
 

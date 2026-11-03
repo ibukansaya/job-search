@@ -125,7 +125,7 @@ just scrape
 bun run src/index.ts
 ```
 
-If `DISCORD_WEBHOOK_URL` is empty, jobs are safely dry-run and printed to stdout.
+If `DISCORD_WEBHOOK_URL` is unset or invalid, nothing is sent and every job stays pending in SQLite for the next dispatch. Jobs are never posted to the parent channel.
 
 ---
 
@@ -136,11 +136,19 @@ Customize the search matrix in `config.json`:
 ```json
 {
   "positions": [
-    "Software Engineer",
-    "Frontend Developer",
-    "Backend Developer",
-    "Fullstack Developer"
+    {
+      "name": "Software Engineer",
+      "aliases": ["Software Developer"],
+      "priority": 10,
+      "discord": { "threadId": "REPLACE_WITH_THREAD_ID" }
+    },
+    {
+      "name": "Backend Developer",
+      "aliases": ["Backend Engineer"],
+      "discord": { "threadId": "REPLACE_WITH_THREAD_ID" }
+    }
   ],
+  "excludeKeywords": ["sales", "product manager"],
   "workTypes": [
     "remote_id",
     "remote_worldwide",
@@ -162,11 +170,27 @@ Customize the search matrix in `config.json`:
 }
 ```
 
-- `positions`: Array of target job role keywords.
+- `positions`: Target roles. Each entry becomes a search query and routes matching jobs to its own Discord thread.
+  - `name`: Role title used for searching and title matching.
+  - `aliases`: Optional extra titles routed to the same thread (e.g. `"Backend Developer"`). The filter has no built-in role synonym list, so every variant you care about belongs here.
+  - `priority`: Optional; lower wins when several positions match one title. Use a higher value for broad fallback roles and `0` for specific ones.
+  - `discord.threadId`: Numeric ID (17–20 digit Discord snowflake, digits only) of an existing thread inside the webhook's channel. Placeholder values like `REPLACE_WITH_THREAD_ID` are rejected before a scan or dispatch.
+- `excludeKeywords`: Optional title/snippet keywords that disqualify a job unless a configured position or alias asks for them. Defaults to `[]` (no keyword exclusion).
 - `workTypes`: Array of `"remote_id"` (Remote Indonesia), `"remote_worldwide"`, `"hybrid"`, `"onsite"`.
 - `portals`: Toggle individual portals on or off.
 - `maxAgeDays`: Maximum posting age in days (filters out stale listings).
 - `rateLimitDelayMs`: Delay between consecutive portal queries to prevent rate-limiting.
+
+### Discord thread setup
+
+Threads are created by hand; the scraper never creates them. One thread per position.
+
+1. Enable **Developer Mode**: Discord → User Settings → Advanced → Developer Mode.
+2. Open the channel that owns `DISCORD_WEBHOOK_URL` and create a thread per position (e.g. `Backend Engineer`).
+3. Right-click the thread → **Copy Thread ID**. Paste that number into the matching `positions[].discord.threadId`.
+4. Keep `.env` unchanged: `DISCORD_WEBHOOK_URL` is the only Discord setting there.
+
+Discord rejects threads that live in another channel or that the webhook cannot access; those batches fail and their jobs stay pending in SQLite for retry. Exactly one thread receives each job — there is no parent-channel fallback.
 
 ---
 
