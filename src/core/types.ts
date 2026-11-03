@@ -23,13 +23,26 @@ export interface Job {
   }
 }
 
+export interface PositionConfig {
+  name: string
+  /** Extra job titles routed to this position/thread. */
+  aliases?: string[]
+  /** Lower values win when several positions match the same title (default 0). */
+  priority?: number
+  discord: {
+    threadId: string
+  }
+}
+
 export interface PortalScraper {
   name: PortalName
   search(query: string, workType: WorkType, maxAgeDays: number): Promise<Job[]>
 }
 
 export interface Config {
-  positions: string[]
+  positions: PositionConfig[]
+  /** Title keywords that disqualify a job unless a configured position/alias asks for them. */
+  excludeKeywords: string[]
   workTypes: WorkType[]
   portals: Record<PortalName, boolean>
   maxAgeDays: number

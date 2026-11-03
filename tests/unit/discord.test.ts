@@ -87,24 +87,54 @@ describe("discord unit tests", () => {
     expect(snippetField?.value).toBe("Looking for experience in distributed systems and cloud architecture.")
   })
 
-  test("sendDiscordJobs dry runs and tracks sentKeys when webhook URL is empty", async () => {
-    const resEmpty = await sendDiscordJobs([{ job: baseJob, key: "tokopedia_backend-eng" }], "")
-    expect(resEmpty.sentCount).toBe(1)
-    expect(resEmpty.failedCount).toBe(0)
-    expect(resEmpty.sentKeys).toEqual(["tokopedia_backend-eng"])
+  test("sendDiscordJobs fails without a webhook instead of reporting success", async () => {
+    const resEmpty = await sendDiscordJobs(
+      [{ job: baseJob, key: "tokopedia_backend-eng", threadId: "1234567890" }],
+      ""
+    )
+    expect(resEmpty.sentCount).toBe(0)
+    expect(resEmpty.failedCount).toBe(1)
+    expect(resEmpty.sentKeys).toEqual([])
+    expect(resEmpty.failedKeys).toEqual(["tokopedia_backend-eng"])
+    expect(resEmpty.errors[0]).toContain("DISCORD_WEBHOOK_URL")
 
     const resMultiple = await sendDiscordJobs(
       [
-        { job: baseJob, key: "job-1" },
-        { job: { ...baseJob, id: "2" }, key: "job-2" }
+        { job: baseJob, key: "job-1", threadId: "1234567890" },
+        { job: { ...baseJob, id: "2" }, key: "job-2", threadId: "1234567890" }
       ],
       ""
     )
-    expect(resMultiple.sentCount).toBe(2)
-    expect(resMultiple.sentKeys).toEqual(["job-1", "job-2"])
+    expect(resMultiple.sentCount).toBe(0)
+    expect(resMultiple.sentKeys).toEqual([])
+    expect(resMultiple.failedKeys).toEqual(["job-1", "job-2"])
 
     const resZero = await sendDiscordJobs([], "")
     expect(resZero.sentCount).toBe(0)
     expect(resZero.failedCount).toBe(0)
+  })
+
+  test("sendDiscordJobs refuses invalid thread IDs without posting to the parent channel", async () => {
+    const calls: string[] = []
+    const server = Bun.serve({
+      port: 0,
+      fetch(req) {
+        calls.push(req.url)
+        return new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } })
+      }
+    })
+
+    try {
+      const result = await sendDiscordJobs(
+        [{ job: baseJob, key: "job-1", threadId: "REPLACE_WITH_THREAD_ID" }],
+        `http://127.0.0.1:${server.port}/webhook`
+      )
+      expect(result.sentCount).toBe(0)
+      expect(result.failedKeys).toEqual(["job-1"])
+      expect(result.errors[0]).toContain("Invalid thread ID")
+      expect(calls.length).toBe(0)
+    } finally {
+      server.stop(true)
+    }
   })
 })

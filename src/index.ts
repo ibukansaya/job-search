@@ -1,14 +1,13 @@
-import { loadConfig } from "./core/config"
+import { loadConfig, validatePositionThreads } from "./core/config"
 import { runScraper } from "./orchestrator"
 import { closeBrowser } from "./services/browser"
-import { sendDiscordJobs, testWebhook } from "./services/discord"
+import { dispatchPendingJobs, testWebhook } from "./services/discord"
 import { JobDatabase } from "./storage/db"
 async function main() {
   const args = process.argv.slice(2)
   const isDaemon = args.includes("--daemon")
   const configArgIndex = args.indexOf("--config")
   const configPath = configArgIndex !== -1 && args[configArgIndex + 1] ? args[configArgIndex + 1] : "config.json"
-  const config = loadConfig(configPath)
   const db = new JobDatabase()
 
   if (args.includes("--test-discord")) {
@@ -18,17 +17,23 @@ async function main() {
     process.exit(ok ? 0 : 1)
   }
 
+  if (args.includes("--stats")) {
+    const stats = db.getStats()
+    console.log(`Total indexed: ${stats.total}, Notified: ${stats.notified}`)
+    db.close()
+    return
+  }
+
+  // Validated only for commands that search, filter, or dispatch jobs.
+  const config = loadConfig(configPath)
+
   if (args.includes("--dispatch-pending")) {
     const idx = args.indexOf("--dispatch-pending")
     const limit = Number(args[idx + 1]) || 50
-    const pending = db.getPendingJobs(limit)
-    console.log(`[Discord] Found ${pending.length} pending job(s) in SQLite (limit: ${limit}).`)
-    if (pending.length > 0) {
-      const result = await sendDiscordJobs(pending)
-      if (result.sentKeys.length > 0) {
-        db.markNotified(result.sentKeys)
-      }
-      console.log(`[Discord] Dispatched: ${result.sentCount}, Failed: ${result.failedCount}`)
+    const result = await dispatchPendingJobs(db, config, limit)
+    console.log(`[Discord] Dispatched: ${result.sentCount}, Failed: ${result.failedCount}`)
+    for (const err of result.errors) {
+      console.warn(`[discord] Delivery error: ${err}`)
     }
     db.close()
     return
@@ -37,27 +42,19 @@ async function main() {
   if (args.includes("--resend")) {
     const resendIndex = args.indexOf("--resend")
     const count = Number(args[resendIndex + 1]) || 5
+    validatePositionThreads(config.positions)
     const resetCount = db.resetRecentNotified(count)
     console.log(`[Discord] Reset ${resetCount} recent job(s) to unnotified.`)
 
-    const pending = db.getPendingJobs(count)
-    if (pending.length > 0) {
-      const result = await sendDiscordJobs(pending)
-      if (result.sentKeys.length > 0) {
-        db.markNotified(result.sentKeys)
-      }
-      console.log(`[Discord] Dispatched: ${result.sentCount}, Failed: ${result.failedCount}`)
+    const result = await dispatchPendingJobs(db, config, count)
+    console.log(`[Discord] Dispatched: ${result.sentCount}, Failed: ${result.failedCount}`)
+    for (const err of result.errors) {
+      console.warn(`[discord] Delivery error: ${err}`)
     }
     db.close()
     return
   }
 
-  if (args.includes("--stats")) {
-    const stats = db.getStats()
-    console.log(`Total indexed: ${stats.total}, Notified: ${stats.notified}`)
-    db.close()
-    return
-  }
   if (!isDaemon) {
     try {
       await runScraper(config, db)

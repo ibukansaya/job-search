@@ -1,13 +1,43 @@
 {
   "positions": [
-    "Software Engineer",
-    "Fullstack Developer",
-    "AI Engineer",
-    "ML Engineer",
-    "Cloud Engineer",
-    "DevOps Engineer",
-    "QA Engineer"
+    {
+      "name": "Software Engineer",
+      "aliases": ["Software Developer"],
+      "priority": 10,
+      "discord": { "threadId": "REPLACE_WITH_THREAD_ID" }
+    },
+    {
+      "name": "Fullstack Developer",
+      "aliases": ["Fullstack Engineer", "Full Stack Developer", "Full Stack Engineer"],
+      "discord": { "threadId": "REPLACE_WITH_THREAD_ID" }
+    },
+    {
+      "name": "AI Engineer",
+      "aliases": ["AI Developer", "Artificial Intelligence Engineer"],
+      "discord": { "threadId": "REPLACE_WITH_THREAD_ID" }
+    },
+    {
+      "name": "ML Engineer",
+      "aliases": ["Machine Learning Engineer", "ML Developer"],
+      "discord": { "threadId": "REPLACE_WITH_THREAD_ID" }
+    },
+    {
+      "name": "Cloud Engineer",
+      "aliases": ["Cloud Developer"],
+      "discord": { "threadId": "REPLACE_WITH_THREAD_ID" }
+    },
+    {
+      "name": "DevOps Engineer",
+      "aliases": ["DevOps Developer", "Site Reliability Engineer", "SRE"],
+      "discord": { "threadId": "REPLACE_WITH_THREAD_ID" }
+    },
+    {
+      "name": "QA Engineer",
+      "aliases": ["QA Developer", "SDET", "Quality Assurance Engineer", "Test Engineer"],
+      "discord": { "threadId": "REPLACE_WITH_THREAD_ID" }
+    }
   ],
+  "excludeKeywords": ["sales", "marketing", "product manager", "ui/ux"],
   "workTypes": [
     "remote_id",
     "remote_worldwide",

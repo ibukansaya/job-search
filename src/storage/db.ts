@@ -2,8 +2,8 @@ import { Database } from "bun:sqlite"
 import { existsSync, mkdirSync } from "node:fs"
 import { dirname } from "node:path"
 import { loadConfig } from "../core/config"
-import { isJobTitleRelevant } from "../core/filter"
-import type { Job, NormalizedWorkType, PortalName } from "../core/types"
+import { findBestMatchingPosition } from "../core/filter"
+import type { Job, NormalizedWorkType, PortalName, PositionConfig } from "../core/types"
 
 export class JobDatabase {
   private db: Database
@@ -89,17 +89,17 @@ export class JobDatabase {
     tx(keys)
   }
 
-  getPendingJobs(limit = 50): Array<{ job: Job; key: string }> {
+  getPendingJobs(limit = 50, offset = 0): Array<{ job: Job; key: string }> {
     const rows = this.db
       .query(
         `SELECT key, id, portal, title, company, location, work_type, salary,
                 url, posted_date, description_snippet, tech_stack, summary
          FROM jobs
          WHERE notified_discord = 0
-         ORDER BY first_seen_at ASC
-         LIMIT ?`
+         ORDER BY first_seen_at ASC, rowid ASC
+         LIMIT ? OFFSET ?`
       )
-      .all(limit) as Array<{
+      .all(limit, offset) as Array<{
       key: string
       id: string
       portal: string
@@ -161,13 +161,13 @@ export class JobDatabase {
     return keys.length
   }
 
-  purgeIrrelevantJobs(allowedPositions: string[]): number {
+  purgeIrrelevantJobs(positions: PositionConfig[], excludeKeywords: string[] = []): number {
     const rows = this.db.query("SELECT key, title FROM jobs").all() as Array<{
       key: string
       title: string
     }>
     const toDelete = rows
-      .filter((r) => !isJobTitleRelevant(r.title, allowedPositions))
+      .filter((r) => !findBestMatchingPosition(r.title, positions, excludeKeywords))
       .map((r) => r.key)
 
     if (toDelete.length === 0) return 0
@@ -200,7 +200,7 @@ if (import.meta.main) {
   const db = new JobDatabase(dbPath)
   if (args.includes("--purge")) {
     const config = loadConfig("config.json")
-    const count = db.purgeIrrelevantJobs(config.positions)
+    const count = db.purgeIrrelevantJobs(config.positions, config.excludeKeywords)
     console.log(`[db] Purged ${count} irrelevant jobs from ${dbPath} based on config.json`)
   } else if (args.includes("--pending")) {
     const pending = db.getPendingJobs(50)
