@@ -102,8 +102,22 @@ export async function sendDiscordJobs(
     return { sentCount: 0, failedCount: 0, sentKeys, failedKeys, errors }
   }
 
-  if (!webhookUrl || !webhookUrl.startsWith("http")) {
-    const message = "[discord] DISCORD_WEBHOOK_URL is not configured; nothing sent, all jobs stay pending."
+  let parsedWebhook: URL | undefined
+  if (webhookUrl) {
+    try {
+      const candidate = new URL(webhookUrl)
+      if (candidate.protocol === "http:" || candidate.protocol === "https:") {
+        parsedWebhook = candidate
+      }
+    } catch {
+      parsedWebhook = undefined
+    }
+  }
+
+  if (!parsedWebhook) {
+    const message = webhookUrl
+      ? "[discord] DISCORD_WEBHOOK_URL is malformed; expected https://discord.com/api/webhooks/<id>/<token>. Nothing sent, all jobs stay pending."
+      : "[discord] DISCORD_WEBHOOK_URL is not configured; nothing sent, all jobs stay pending."
     console.error(message)
     for (const { job } of items) {
       console.log(`- [${job.portal.toUpperCase()}] [${job.workType}] ${job.title} @ ${job.company} (${job.url})`)
@@ -138,7 +152,7 @@ export async function sendDiscordJobs(
       errors.push(`Invalid thread ID "${threadId}"; refusing to post to the parent channel.`)
     } else {
       try {
-        const url = new URL(webhookUrl)
+        const url = new URL(parsedWebhook.href)
         url.searchParams.set("thread_id", threadId)
         url.searchParams.set("wait", "true")
         target = url.toString()
@@ -187,7 +201,11 @@ export async function sendDiscordJobs(
 
           if (!res.ok) {
             const errText = await res.text()
-            const errMsg = `Webhook HTTP ${res.status}: ${errText}`
+            const hint =
+              errText.includes("10003") || /unknown channel/i.test(errText)
+                ? " (thread not found in this webhook's channel; recreate the thread there or update threadId)"
+                : ""
+            const errMsg = `Webhook HTTP ${res.status}: ${errText}${hint}`
             console.error(`[discord] ${errMsg}`)
             errors.push(errMsg)
             break

@@ -137,4 +137,39 @@ describe("discord unit tests", () => {
       server.stop(true)
     }
   })
+
+  test("sendDiscordJobs refuses a malformed webhook URL before any request", async () => {
+    const result = await sendDiscordJobs(
+      [{ job: baseJob, key: "job-1", threadId: "1234567890" }],
+      "hhttps://discord.com/api/webhooks/1/token"
+    )
+
+    expect(result.sentCount).toBe(0)
+    expect(result.failedKeys).toEqual(["job-1"])
+    expect(result.errors[0]).toContain("malformed")
+  })
+
+  test("sendDiscordJobs explains Discord 10003 Unknown Channel failures", async () => {
+    const server = Bun.serve({
+      port: 0,
+      fetch() {
+        return new Response(JSON.stringify({ message: "Unknown Channel", code: 10003 }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        })
+      }
+    })
+
+    try {
+      const result = await sendDiscordJobs(
+        [{ job: baseJob, key: "job-1", threadId: "1234567890" }],
+        `http://127.0.0.1:${server.port}/webhook`
+      )
+      expect(result.sentCount).toBe(0)
+      expect(result.failedKeys).toEqual(["job-1"])
+      expect(result.errors[0]).toContain("thread not found in this webhook's channel")
+    } finally {
+      server.stop(true)
+    }
+  })
 })
